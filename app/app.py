@@ -1,28 +1,33 @@
-"""Forest Fire Prediction – Streamlit dashboard (Algerian Forest Fires dataset).
-
-Models and preprocessing come from the original project by Aravind Selvam
-(https://github.com/aravind-selvam/forest-fire-prediction); this app re-packages them as a
-Streamlit dashboard.
-"""
+"""Streamlit UI for the Random Forest Algerian Forest Fire classifier."""
 import warnings
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from sklearn.metrics import (accuracy_score, confusion_matrix, mean_absolute_error,
-                             precision_recall_fscore_support, r2_score)
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    precision_recall_fscore_support,
+    roc_auc_score,
+    roc_curve,
+)
 
 import core
 
 warnings.filterwarnings("ignore")
-st.set_page_config(page_title="Forest Fire Prediction", page_icon="🔥", layout="wide")
+st.set_page_config(
+    page_title="Forest Fire Prediction",
+    page_icon="🔥",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 
-# ---------- cached loaders ----------
 @st.cache_resource
-def get_models():
-    return core.load_models()
+def get_model():
+    return core.load_model()
 
 
 @st.cache_data
@@ -30,198 +35,329 @@ def get_data():
     return core.load_data()
 
 
-@st.cache_resource
-def get_scaler():
-    return core.full_data_scaler(get_data())
+@st.cache_data
+def get_metadata():
+    return core.load_metadata()
 
 
-df = get_data()
-clf, reg = get_models()
+def safe_default(feature, ranges, fallback):
+    low, high = ranges[feature]
+    return float(min(max(fallback, low), high))
+
+
+# Load resources once per Streamlit session/cache.
+try:
+    metadata = get_metadata()
+    df = get_data()
+    model = get_model()
+except Exception as exc:
+    st.error("The application could not load its model or dataset.")
+    st.exception(exc)
+    st.info(
+        "Check that models/fire_classifier.joblib, models/metadata.json and "
+        "data/Algerian_forest_fires_dataset_CLEANED.csv are in the expected "
+        "locations. See the integration instructions."
+    )
+    st.stop()
+
 ranges = core.data_ranges(df)
-df_view = df.assign(Fire=df["Classes"].map({0: "Not fire", 1: "Fire"}),
-                    Region_name=df["Region"].map({1: "Bejaia", 2: "Sidi Bel-Abbes"}))
+df_view = df.copy()
+df_view["Fire label"] = df_view["Classes"].map(core.TARGET_LABELS)
+df_view["Region name"] = df_view["Region"].map(core.REGION_LABELS).fillna(
+    df_view["Region"].astype(str)
+)
 
-# Metrics reported in the training notebook ("Forest Fire Part-2 Model.ipynb")
-REG_METRICS = pd.DataFrame({
-    "Model": ["Random Forest", "Linear Regression", "Ridge", "K-Neighbors", "Lasso",
-              "Support Vector Regressor", "Random Forest (tuned)", "Ridge (tuned)"],
-    "R²": [0.9818, 0.9700, 0.9690, 0.9422, 0.9377, 0.9340, 0.9803, 0.9695],
-    "MAE": [0.5735, 0.6453, 0.6648, 0.9816, 1.1209, 0.8676, 0.5739, 0.6537],
-})
-CLF_METRICS = pd.DataFrame({
-    "Model": ["XGBoost (tuned)", "Logistic Regression", "Decision Tree", "Random Forest*"],
-    "Test accuracy": [0.9726, 0.9589, 0.9726, 0.9589],
-    "10-fold stratified CV accuracy": [0.9752, 0.9752, 0.9752, 0.9710],
-})
+st.sidebar.title("🔥 Forest Fire AI")
+st.sidebar.caption("Algerian Forest Fires · Random Forest")
+page = st.sidebar.radio(
+    "Navigate",
+    ["🏠 Project Overview", "📊 Exploratory Data Analysis",
+     "📈 Model Performance", "🔥 Fire Prediction"],
+)
+st.sidebar.divider()
+st.sidebar.caption("Minor Specialization Project · MIT Manipal")
 
-page = st.sidebar.radio("Navigate", ["🏠 Project Overview", "📊 EDA", "📈 Model Performance",
-                                     "🔥 Fire Prediction"])
-st.sidebar.markdown("---")
-st.sidebar.caption("Minor Specialization Project · MIT Manipal\n\nOriginal models & notebook: "
-                   "Aravind Selvam")
-
-# ====================================================================== OVERVIEW
+# ------------------------------------------------------------------- OVERVIEW
 if page.startswith("🏠"):
     st.title("🔥 Algerian Forest Fire Prediction")
-    st.write("A machine-learning dashboard that predicts **whether a forest fire is likely** "
-             "(classification) and the **Fire Weather Index, FWI** (regression) from weather "
-             "and fuel-moisture readings.")
+    st.write(
+        "A machine-learning dashboard that estimates whether a forest fire is "
+        "likely using weather conditions and Fire Weather Index (FWI) indicators."
+    )
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Observations", len(df))
     c2.metric("Fire days", int(df["Classes"].sum()))
-    c3.metric("Regions", "2")
-    c4.metric("Model inputs", len(core.FEATURES))
+    c3.metric("Regions", df["Region"].nunique())
+    c4.metric("Model inputs", len(metadata["features"]))
 
-    st.subheader("Dataset")
-    st.write("UCI **Algerian Forest Fires** dataset: daily observations from two regions of "
-             "Algeria – **Bejaia** and **Sidi Bel-Abbes** – from June to September 2012.")
-    st.subheader("Pipeline")
+    st.subheader("Project overview")
+    st.write(
+        "The application uses the tuned Random Forest classifier trained by "
+        "`src/train_model.py`. The saved scikit-learn Pipeline contains both "
+        "the StandardScaler and classifier."
+    )
+    st.subheader("Prediction pipeline")
     st.markdown(
-        "1. Clean the data and encode `Classes` (fire = 1, not fire = 0)\n"
-        "2. Remove highly correlated features (|r| > 0.75: BUI, DC)\n"
-        "3. Standardise with `StandardScaler`\n"
-        "4. Compare models, tune the best with `RandomizedSearchCV`\n"
-        "5. Keep the **5 most useful inputs** for the app: Temperature, Wind speed, FFMC, DMC, ISI\n"
-        "6. Serve the final models: **XGBoost** (fire / no fire) and **Random Forest** (FWI)")
-    st.subheader("Input features")
-    st.table(pd.DataFrame({
-        "Feature": [core.FEATURE_LABELS[f] for f in core.FEATURES],
-        "Training min": [round(ranges[f][0], 1) for f in core.FEATURES],
-        "Training max": [round(ranges[f][1], 1) for f in core.FEATURES],
-    }))
-    with st.expander("Dataset preview"):
-        st.dataframe(df_view.drop(columns=["Classes", "Region"]).head(20), width="stretch")
+        "1. Collect the 13 weather, date and region inputs.\n"
+        "2. Arrange the values in the exact feature order from `metadata.json`.\n"
+        "3. Pass the input row to the saved preprocessing-and-classification pipeline.\n"
+        "4. Display the predicted class and estimated fire probability."
+    )
+    st.subheader("Model inputs and training ranges")
+    ranges_table = pd.DataFrame(
+        [
+            {
+                "Feature": core.FEATURE_LABELS[f],
+                "Training minimum": round(ranges[f][0], 2),
+                "Training maximum": round(ranges[f][1], 2),
+            }
+            for f in core.DEFAULT_FEATURES
+        ]
+    )
+    st.dataframe(ranges_table, hide_index=True, use_container_width=True)
 
-# ====================================================================== EDA
+    with st.expander("Dataset preview"):
+        st.dataframe(df_view.head(20), use_container_width=True)
+
+# ------------------------------------------------------------------------- EDA
 elif page.startswith("📊"):
     st.title("📊 Exploratory Data Analysis")
-    tab1, tab2, tab3, tab4 = st.tabs(["Class balance", "Distributions", "Correlation",
-                                      "Time & region"])
-    with tab1:
-        counts = df_view["Fire"].value_counts().reset_index()
-        counts.columns = ["Class", "Days"]
-        st.plotly_chart(px.pie(counts, names="Class", values="Days", hole=0.4,
-                               color="Class", color_discrete_map={"Fire": "#d9534f",
-                                                                  "Not fire": "#5cb85c"}),
-                        width="stretch")
-        by_region = df_view.groupby(["Region_name", "Fire"]).size().reset_index(name="Days")
-        st.plotly_chart(px.bar(by_region, x="Region_name", y="Days", color="Fire", barmode="group",
-                               color_discrete_map={"Fire": "#d9534f", "Not fire": "#5cb85c"}),
-                        width="stretch")
-    with tab2:
-        feat = st.selectbox("Feature", core.FEATURES + ["FWI"],
-                            format_func=lambda f: core.FEATURE_LABELS.get(f, "Fire Weather Index (FWI)"))
-        st.plotly_chart(px.histogram(df_view, x=feat, color="Fire", nbins=30, barmode="overlay",
-                                     opacity=0.7,
-                                     color_discrete_map={"Fire": "#d9534f", "Not fire": "#5cb85c"}),
-                        width="stretch")
-        st.plotly_chart(px.box(df_view, x="Fire", y=feat, color="Fire",
-                               color_discrete_map={"Fire": "#d9534f", "Not fire": "#5cb85c"}),
-                        width="stretch")
-    with tab3:
-        cols = ["Temperature", "RH", "Ws", "Rain", "FFMC", "DMC", "DC", "ISI", "BUI", "FWI"]
-        corr = df[cols].corr().round(2)
-        st.plotly_chart(px.imshow(corr, text_auto=True, color_continuous_scale="RdBu_r",
-                                  zmin=-1, zmax=1, aspect="auto"), width="stretch")
-        st.caption("BUI and DC are highly correlated with other variables, which is why the "
-                   "original notebook drops them before modelling.")
-    with tab4:
-        month_names = {6: "Jun", 7: "Jul", 8: "Aug", 9: "Sep"}
-        m = df_view.assign(Month=df_view["month"].map(month_names)).groupby(
-            ["Month", "Fire"]).size().reset_index(name="Days")
-        st.plotly_chart(px.bar(m, x="Month", y="Days", color="Fire", barmode="group",
-                               category_orders={"Month": ["Jun", "Jul", "Aug", "Sep"]},
-                               color_discrete_map={"Fire": "#d9534f", "Not fire": "#5cb85c"}),
-                        width="stretch")
-        st.plotly_chart(px.scatter(df_view, x="FFMC", y="FWI", color="Fire",
-                                   color_discrete_map={"Fire": "#d9534f", "Not fire": "#5cb85c"}),
-                        width="stretch")
+    tab1, tab2, tab3, tab4 = st.tabs(
+        ["Class balance", "Feature distributions", "Correlation", "Time & region"]
+    )
 
-# ====================================================================== PERFORMANCE
+    with tab1:
+        counts = df_view["Fire label"].value_counts().rename_axis("Class").reset_index(name="Days")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.plotly_chart(
+                px.pie(counts, names="Class", values="Days", hole=0.4,
+                       title="Fire vs not-fire observations"),
+                use_container_width=True,
+            )
+        with col2:
+            by_region = (
+                df_view.groupby(["Region name", "Fire label"])
+                .size().reset_index(name="Days")
+            )
+            st.plotly_chart(
+                px.bar(by_region, x="Region name", y="Days", color="Fire label",
+                       barmode="group", title="Class distribution by region"),
+                use_container_width=True,
+            )
+
+    with tab2:
+        available = [f for f in core.DEFAULT_FEATURES if f != "Region"] + ["FWI"]
+        feature = st.selectbox(
+            "Select feature",
+            available,
+            format_func=lambda f: core.FEATURE_LABELS.get(f, f),
+        )
+        left, right = st.columns(2)
+        with left:
+            st.plotly_chart(
+                px.histogram(df_view, x=feature, color="Fire label", nbins=25,
+                             barmode="overlay", opacity=0.7,
+                             title=f"{feature} distribution"),
+                use_container_width=True,
+            )
+        with right:
+            st.plotly_chart(
+                px.box(df_view, x="Fire label", y=feature, color="Fire label",
+                       title=f"{feature} by class"),
+                use_container_width=True,
+            )
+
+    with tab3:
+        numeric = df.select_dtypes(include="number").drop(
+            columns=["Classes"], errors="ignore"
+        )
+        corr = numeric.corr().round(2)
+        st.plotly_chart(
+            px.imshow(corr, text_auto=True, color_continuous_scale="RdBu_r",
+                      zmin=-1, zmax=1, aspect="auto", title="Feature correlation"),
+            use_container_width=True,
+        )
+
+    with tab4:
+        if "month" in df_view.columns:
+            month_order = [6, 7, 8, 9]
+            monthly = (
+                df_view.groupby(["month", "Fire label"]).size()
+                .reset_index(name="Days")
+            )
+            st.plotly_chart(
+                px.bar(monthly, x="month", y="Days", color="Fire label",
+                       barmode="group", category_orders={"month": month_order},
+                       title="Monthly fire incidence"),
+                use_container_width=True,
+            )
+        st.plotly_chart(
+            px.scatter(df_view, x="Temperature", y="RH", color="Fire label",
+                       hover_data=["Ws", "Rain", "Region name"],
+                       title="Temperature vs relative humidity"),
+            use_container_width=True,
+        )
+
+# --------------------------------------------------------------- PERFORMANCE
 elif page.startswith("📈"):
     st.title("📈 Model Performance")
-    st.caption("Tables show the results recorded in the training notebook. The confusion matrix "
-               "and predicted-vs-actual plot are recomputed here by loading the saved models on "
-               "the notebook's exact test split.")
-    st.subheader("Classification – Fire / Not fire (deployed: tuned XGBoost)")
-    st.dataframe(CLF_METRICS, hide_index=True, width="stretch")
-    st.caption("*In the notebook, the cell labelled 'KNN' actually trains a Random Forest, so it "
-               "is shown here as Random Forest.")
+    st.caption(
+        "Metrics below are recomputed on the same stratified 80/20 holdout split "
+        "used in src/train_model.py (test_size=0.2, random_state=42)."
+    )
+    try:
+        y_true, y_pred, y_probability = core.holdout_predictions(df, model)
+        accuracy = accuracy_score(y_true, y_pred)
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            y_true, y_pred, average="binary", zero_division=0
+        )
+        auc = roc_auc_score(y_true, y_probability)
 
-    y_c, p_c = core.classification_holdout(df, clf)
-    cm = confusion_matrix(y_c, p_c)
-    prec, rec, f1, _ = precision_recall_fscore_support(y_c, p_c, zero_division=0)
-    a, b, c = st.columns(3)
-    a.metric("Deployed model – test accuracy", f"{accuracy_score(y_c, p_c):.2%}")
-    b.metric("Precision (fire)", f"{prec[1]:.2f}")
-    c.metric("Recall (fire)", f"{rec[1]:.2f}")
-    st.plotly_chart(px.imshow(cm, text_auto=True, color_continuous_scale="Blues",
-                              x=["Pred: Not fire", "Pred: Fire"], y=["Actual: Not fire", "Actual: Fire"],
-                              title="Confusion matrix (73 test rows)"), width="stretch")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Accuracy", f"{accuracy:.2%}")
+        c2.metric("Precision (fire)", f"{precision:.2%}")
+        c3.metric("Recall (fire)", f"{recall:.2%}")
+        c4.metric("ROC-AUC", f"{auc:.3f}")
 
-    st.subheader("Regression – Fire Weather Index (deployed: tuned Random Forest)")
-    st.dataframe(REG_METRICS, hide_index=True, width="stretch")
-    y_r, p_r = core.regression_holdout(df, reg)
-    a, b = st.columns(2)
-    a.metric("Deployed model – R²", f"{r2_score(y_r, p_r):.4f}")
-    b.metric("Deployed model – MAE", f"{mean_absolute_error(y_r, p_r):.4f}")
-    fig = px.scatter(x=y_r, y=p_r, labels={"x": "Actual FWI", "y": "Predicted FWI"},
-                     title="Predicted vs actual FWI (61 test rows)")
-    mx = float(max(y_r.max(), p_r.max()))
-    fig.add_trace(go.Scatter(x=[0, mx], y=[0, mx], mode="lines", name="Perfect fit",
-                             line=dict(dash="dash")))
-    st.plotly_chart(fig, width="stretch")
-    imp = pd.DataFrame({"Feature": core.FEATURES, "Importance": reg.feature_importances_})
-    st.plotly_chart(px.bar(imp.sort_values("Importance"), x="Importance", y="Feature",
-                           orientation="h", title="Random Forest feature importance (FWI model)"),
-                    width="stretch")
+        left, right = st.columns(2)
+        with left:
+            cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
+            st.plotly_chart(
+                px.imshow(
+                    cm, text_auto=True, x=["Predicted: Not fire", "Predicted: Fire"],
+                    y=["Actual: Not fire", "Actual: Fire"],
+                    color_continuous_scale="Blues", title="Confusion matrix",
+                ),
+                use_container_width=True,
+            )
+        with right:
+            fpr, tpr, _ = roc_curve(y_true, y_probability)
+            roc_fig = go.Figure()
+            roc_fig.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines", name=f"ROC (AUC {auc:.3f})"))
+            roc_fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines",
+                                         line=dict(dash="dash"), name="Random baseline"))
+            roc_fig.update_layout(title="ROC curve", xaxis_title="False positive rate",
+                                  yaxis_title="True positive rate")
+            st.plotly_chart(roc_fig, use_container_width=True)
 
-# ====================================================================== PREDICTION
+        st.subheader("Classification report")
+        report = classification_report(
+            y_true, y_pred, labels=[0, 1],
+            target_names=["Not Fire", "Fire"], output_dict=True, zero_division=0
+        )
+        st.dataframe(pd.DataFrame(report).transpose().round(3), use_container_width=True)
+
+        classifier = model.named_steps.get("clf") if hasattr(model, "named_steps") else None
+        if classifier is not None and hasattr(classifier, "feature_importances_"):
+            importance = pd.DataFrame({
+                "Feature": core.DEFAULT_FEATURES,
+                "Importance": classifier.feature_importances_,
+            }).sort_values("Importance")
+            st.subheader("Feature importance")
+            st.plotly_chart(
+                px.bar(importance, x="Importance", y="Feature", orientation="h"),
+                use_container_width=True,
+            )
+    except Exception as exc:
+        st.error("Could not calculate holdout performance.")
+        st.exception(exc)
+
+# ------------------------------------------------------------------ PREDICTION
 else:
     st.title("🔥 Fire Prediction")
-    st.write("Enter weather and fuel-moisture readings. Defaults are the dataset averages.")
-    mean = df[core.FEATURES].mean()
-    with st.form("predict_form"):
-        cols = st.columns(5)
-        values = {}
-        steps = {"Temperature": 1.0, "Ws": 1.0, "FFMC": 0.1, "DMC": 0.1, "ISI": 0.1}
-        for col, f in zip(cols, core.FEATURES):
-            lo, hi = core.HARD_LIMITS[f]
-            values[f] = col.number_input(core.FEATURE_LABELS[f], min_value=lo, max_value=hi,
-                                         value=float(round(mean[f], 1)), step=steps[f],
-                                         help=f"Training data range: {ranges[f][0]:.1f} – "
-                                              f"{ranges[f][1]:.1f}")
-        submitted = st.form_submit_button("Predict", type="primary")
+    st.write(
+        "Enter the date, region and weather/FWI readings. The application will "
+        "return a fire/no-fire classification and the model's fire probability."
+    )
+
+    means = df[core.DEFAULT_FEATURES].mean(numeric_only=True)
+    with st.form("fire_prediction_form"):
+        st.subheader("Date and location")
+        date_cols = st.columns(4)
+        day = date_cols[0].number_input("Day", min_value=1, max_value=31,
+                                        value=int(round(means["day"])), step=1)
+        month = date_cols[1].number_input("Month", min_value=1, max_value=12,
+                                          value=int(round(means["month"])), step=1)
+        year = date_cols[2].number_input("Year", min_value=1900, max_value=2100,
+                                         value=int(round(means["year"])), step=1)
+        region_name = date_cols[3].selectbox("Region", ["Bejaia", "Sidi Bel-Abbes"])
+        region_value = 1 if region_name == "Bejaia" else 2
+
+        st.subheader("Weather conditions")
+        weather_cols = st.columns(4)
+        weather_features = ["Temperature", "RH", "Ws", "Rain"]
+        values = {
+            "day": int(day), "month": int(month), "year": int(year),
+            "Region": int(region_value),
+        }
+        weather_limits = {
+            "Temperature": (-10.0, 60.0),
+            "RH": (0.0, 100.0),
+            "Ws": (0.0, 150.0),
+            "Rain": (0.0, 300.0),
+        }
+        for col, feature in zip(weather_cols, weather_features):
+            low, high = weather_limits[feature]
+            default = safe_default(feature, ranges, means[feature])
+            values[feature] = col.number_input(
+                core.FEATURE_LABELS[feature], min_value=float(low), max_value=float(high),
+                value=float(default), step=0.1 if feature == "Rain" else 1.0,
+                help=f"Observed training range: {ranges[feature][0]:.2f}–{ranges[feature][1]:.2f}",
+            )
+
+        st.subheader("Fire Weather Index indicators")
+        index_cols = st.columns(5)
+        index_features = ["FFMC", "DMC", "DC", "ISI", "BUI"]
+        index_limits = {
+            "FFMC": (0.0, 101.0), "DMC": (0.0, 500.0),
+            "DC": (0.0, 1000.0), "ISI": (0.0, 100.0), "BUI": (0.0, 500.0),
+        }
+        for col, feature in zip(index_cols, index_features):
+            low, high = index_limits[feature]
+            default = safe_default(feature, ranges, means[feature])
+            values[feature] = col.number_input(
+                core.FEATURE_LABELS[feature], min_value=float(low), max_value=float(high),
+                value=float(default), step=0.1,
+                help=f"Observed training range: {ranges[feature][0]:.2f}–{ranges[feature][1]:.2f}",
+            )
+
+        submitted = st.form_submit_button("Predict fire risk", type="primary",
+                                          use_container_width=True)
 
     if submitted:
         errors = core.validate_inputs(values)
         if errors:
-            for e in errors:
-                st.error(e)
+            for error in errors:
+                st.error(error)
         else:
             outside = core.out_of_training_range(values, ranges)
             if outside:
-                st.warning("Outside the range the models were trained on for: "
-                           + ", ".join(core.FEATURE_LABELS[f] for f in outside)
-                           + ". Treat the result with caution.")
-            label, p_fire, fwi = core.predict(values, clf, reg, get_scaler())
-            left, right = st.columns(2)
-            with left:
-                st.subheader("Classification")
-                if label == 1:
-                    st.error("🔥 **Forest in danger** – fire predicted")
-                else:
-                    st.success("🌲 **Forest is safe** – no fire predicted")
-                st.progress(min(max(p_fire, 0.0), 1.0), text=f"Estimated fire probability: {p_fire:.1%}")
-            with right:
-                st.subheader("Fire Weather Index (FWI)")
-                st.metric("Predicted FWI", f"{fwi:.2f}")
-                if fwi > core.HIGH_HAZARD_FWI:
-                    st.error("High hazard rating (FWI > 15)")
-                else:
-                    st.success("Low hazard rating (FWI ≤ 15)")
-            st.caption("The two models are trained separately, so they can disagree near the "
-                       "boundary (the classifier is driven mainly by FFMC, with a switch point "
-                       "around FFMC ≈ 80).")
-            with st.expander("Inputs used"):
-                st.json(values)
+                labels = [core.FEATURE_LABELS[f] for f in outside]
+                st.warning(
+                    "These values are outside the model's training-data range: "
+                    + ", ".join(labels)
+                    + ". The prediction may be less reliable."
+                )
+            try:
+                label, probability = core.predict(values, model)
+                left, right = st.columns(2)
+                with left:
+                    st.subheader("Prediction")
+                    if label == 1:
+                        st.error("🔥 Fire predicted")
+                    else:
+                        st.success("🌲 No fire predicted")
+                with right:
+                    st.subheader("Estimated fire probability")
+                    st.metric("Fire probability", f"{probability:.1%}")
+                    st.progress(min(max(probability, 0.0), 1.0))
+                st.caption(
+                    "This is a machine-learning estimate based on the Algerian "
+                    "Forest Fires dataset. It is not an official warning system."
+                )
+                with st.expander("Inputs sent to the model"):
+                    st.json({feature: values[feature] for feature in core.DEFAULT_FEATURES})
+            except Exception as exc:
+                st.error("Prediction failed. Check the model file and input feature order.")
+                st.exception(exc)

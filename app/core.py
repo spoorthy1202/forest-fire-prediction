@@ -1,96 +1,202 @@
-"""Shared model / data helpers for the Forest Fire app (used by app.py and tests)."""
-import bz2
-import pickle
-from pathlib import Path
+"""Model/data helpers for the Algerian Forest Fire Streamlit app.
 
+The deployed classifier is the fitted scikit-learn Pipeline produced by
+src/train_model.py. Its StandardScaler is already included in the pipeline.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 
-BASE = Path(__file__).parent
-FEATURES = ["Temperature", "Ws", "FFMC", "DMC", "ISI"]  # order the models were trained on
+BASE = Path(__file__).resolve().parent
+
+# The order must match the feature order used by src/train_model.py.
+DEFAULT_FEATURES = [
+    "day", "month", "year", "Temperature", "RH", "Ws", "Rain",
+    "FFMC", "DMC", "DC", "ISI", "BUI", "Region",
+]
+
 FEATURE_LABELS = {
+    "day": "Day of month",
+    "month": "Month",
+    "year": "Year",
     "Temperature": "Temperature (°C)",
+    "RH": "Relative humidity (%)",
     "Ws": "Wind speed (km/h)",
+    "Rain": "Rainfall (mm)",
     "FFMC": "Fine Fuel Moisture Code (FFMC)",
     "DMC": "Duff Moisture Code (DMC)",
+    "DC": "Drought Code (DC)",
     "ISI": "Initial Spread Index (ISI)",
+    "BUI": "Build Up Index (BUI)",
+    "Region": "Region",
 }
-# Hard physical limits for the input form (the training range is narrower; see data_ranges()).
-HARD_LIMITS = {
-    "Temperature": (-10.0, 55.0),
-    "Ws": (0.0, 100.0),
-    "FFMC": (0.0, 101.0),
-    "DMC": (0.0, 400.0),
-    "ISI": (0.0, 60.0),
-}
-HIGH_HAZARD_FWI = 15  # threshold used in the original app
+
+REGION_LABELS = {1: "Bejaia", 2: "Sidi Bel-Abbes"}
+TARGET_LABELS = {0: "Not Fire", 1: "Fire"}
+
+MODEL_CANDIDATES = [
+    BASE / "models" / "fire_classifier.joblib",
+    BASE.parent / "models" / "fire_classifier.joblib",
+]
+METADATA_CANDIDATES = [
+    BASE / "models" / "metadata.json",
+    BASE / "metadata.json",
+    BASE.parent / "models" / "metadata.json",
+]
+DATA_CANDIDATES = [
+    BASE / "data" / "Algerian_forest_fires_dataset_CLEANED.csv",
+    BASE / "dataset" / "Algerian_forest_fires_dataset_CLEANED.csv",
+    BASE.parent / "dataset" / "Algerian_forest_fires_dataset_CLEANED.csv",
+    BASE.parent / "data" / "Algerian_forest_fires_dataset_CLEANED.csv",
+]
 
 
-def load_models():
-    clf = pickle.load(bz2.BZ2File(BASE / "models" / "classification.pkl", "rb"))
-    reg = pickle.load(bz2.BZ2File(BASE / "models" / "regression.pkl", "rb"))
-    return clf, reg
+def _first_existing(paths: list[Path], description: str) -> Path:
+    for path in paths:
+        if path.is_file():
+            return path
+    searched = "\n".join(str(p) for p in paths)
+    raise FileNotFoundError(
+        f"Could not find {description}. Checked these locations:\n{searched}"
+    )
+
+
+def load_metadata() -> dict:
+    path = _first_existing(METADATA_CANDIDATES, "models/metadata.json")
+    with path.open("r", encoding="utf-8") as f:
+        metadata = json.load(f)
+    features = metadata.get("features")
+    if not isinstance(features, list) or not features:
+        raise ValueError("metadata.json must contain a non-empty 'features' list.")
+    if features != DEFAULT_FEATURES:
+        raise ValueError(
+            "The feature order in metadata.json differs from the expected order "
+            "in train_model.py. Check the training script and metadata before "
+            "making predictions.\n"
+            f"Metadata: {features}\nExpected: {DEFAULT_FEATURES}"
+        )
+    return metadata
+
+
+def load_model():
+    """Load the fitted Random Forest Pipeline (including its scaler)."""
+    model_path = _first_existing(MODEL_CANDIDATES, "models/fire_classifier.joblib")
+    return joblib.load(model_path)
 
 
 def load_data() -> pd.DataFrame:
-    """Cleaned dataset with the same preprocessing as the training notebook."""
-    df = pd.read_csv(BASE / "data" / "Algerian_forest_fires_dataset_CLEANED.csv")
-    df["Classes"] = np.where(df["Classes"] == "not fire", 0, 1)
+    """Load the cleaned Algerian forest-fire dataset."""
+    path = _first_existing(DATA_CANDIDATES, "Algerian_forest_fires_dataset_CLEANED.csv")
+    df = pd.read_csv(path)
+    df.columns = df.columns.astype(str).str.strip()
+
+    if "Classes" not in df.columns:
+        raise ValueError("The cleaned dataset must contain a 'Classes' column.")
+
+    if not pd.api.types.is_numeric_dtype(df["Classes"]):
+        class_values = df["Classes"].astype(str).str.strip().str.lower()
+        df["Classes"] = class_values.map({"not fire": 0, "fire": 1})
+    else:
+        df["Classes"] = pd.to_numeric(df["Classes"], errors="coerce")
+
+    if df["Classes"].isna().any():
+        raise ValueError("Some Classes values could not be mapped to 0/1.")
+
+    df["Classes"] = df["Classes"].astype(int)
+    for column in DEFAULT_FEATURES:
+        if column not in df.columns:
+            raise ValueError(f"Dataset is missing required feature: {column}")
     return df
 
 
-def full_data_scaler(df: pd.DataFrame) -> StandardScaler:
-    """Scaler fitted on all rows of the 5 features, exactly as the original Flask app.py did."""
-    return StandardScaler().fit(df[FEATURES])
+def data_ranges(df: pd.DataFrame) -> Dict[str, Tuple[float, float]]:
+    return {
+        feature: (float(df[feature].min()), float(df[feature].max()))
+        for feature in DEFAULT_FEATURES
+    }
 
 
-def data_ranges(df: pd.DataFrame) -> dict:
-    return {f: (float(df[f].min()), float(df[f].max())) for f in FEATURES}
+# Broad physical/data-entry limits. The training-range warning is separate.
+HARD_LIMITS = {
+    "day": (1, 31),
+    "month": (1, 12),
+    "year": (1900, 2100),
+    "Temperature": (-10.0, 60.0),
+    "RH": (0.0, 100.0),
+    "Ws": (0.0, 150.0),
+    "Rain": (0.0, 300.0),
+    "FFMC": (0.0, 101.0),
+    "DMC": (0.0, 500.0),
+    "DC": (0.0, 1000.0),
+    "ISI": (0.0, 100.0),
+    "BUI": (0.0, 500.0),
+    "Region": (1, 2),
+}
 
 
-def validate_inputs(values: dict) -> list:
-    """Return a list of error strings (empty list = valid)."""
+def validate_inputs(values: dict) -> List[str]:
     errors = []
-    for f in FEATURES:
-        v = values.get(f)
-        if v is None or (isinstance(v, float) and np.isnan(v)):
-            errors.append(f"{FEATURE_LABELS[f]} is missing.")
+    for feature in DEFAULT_FEATURES:
+        value = values.get(feature)
+        if value is None:
+            errors.append(f"{FEATURE_LABELS[feature]} is required.")
             continue
-        lo, hi = HARD_LIMITS[f]
-        if not (lo <= v <= hi):
-            errors.append(f"{FEATURE_LABELS[f]} must be between {lo:g} and {hi:g}.")
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            errors.append(f"{FEATURE_LABELS[feature]} must be numeric.")
+            continue
+        if not np.isfinite(numeric_value):
+            errors.append(f"{FEATURE_LABELS[feature]} must be a finite number.")
+            continue
+        low, high = HARD_LIMITS[feature]
+        if not low <= numeric_value <= high:
+            errors.append(
+                f"{FEATURE_LABELS[feature]} must be between {low:g} and {high:g}."
+            )
+        if feature in {"day", "month", "year", "Region"} and not numeric_value.is_integer():
+            errors.append(f"{FEATURE_LABELS[feature]} must be a whole number.")
     return errors
 
 
-def out_of_training_range(values: dict, ranges: dict) -> list:
-    return [f for f in FEATURES if not (ranges[f][0] <= values[f] <= ranges[f][1])]
+def out_of_training_range(values: dict, ranges: dict) -> List[str]:
+    outside = []
+    for feature in DEFAULT_FEATURES:
+        low, high = ranges[feature]
+        value = float(values[feature])
+        if value < low or value > high:
+            outside.append(feature)
+    return outside
 
 
-def predict(values: dict, clf, reg, scaler):
-    x = scaler.transform(pd.DataFrame([[values[f] for f in FEATURES]], columns=FEATURES))
-    proba_fire = float(clf.predict_proba(x)[0][1])
-    label = int(clf.predict(x)[0])
-    fwi = float(reg.predict(x)[0])
-    return label, proba_fire, fwi
+def predict(values: dict, model) -> Tuple[int, float]:
+    """Return (class_label, fire_probability) using the saved pipeline."""
+    row = pd.DataFrame(
+        [[values[feature] for feature in DEFAULT_FEATURES]],
+        columns=DEFAULT_FEATURES,
+    )
+    label = int(model.predict(row)[0])
+    probabilities = model.predict_proba(row)[0]
+    classes = list(model.classes_)
+    fire_index = classes.index(1)
+    probability_fire = float(probabilities[fire_index])
+    return label, probability_fire
 
 
-def classification_holdout(df, clf):
-    """Re-create the notebook's classification test split (test_size=0.3, random_state=36)."""
-    X = df.drop("Classes", axis=1)
+def holdout_predictions(df: pd.DataFrame, model):
+    """Recreate train_model.py's stratified 80/20 split (random_state=42)."""
+    X = df[DEFAULT_FEATURES]
     y = df["Classes"]
-    Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.3, random_state=36)
-    sc = StandardScaler().fit(Xtr[FEATURES])
-    pred = clf.predict(sc.transform(Xte[FEATURES]))
-    return yte.to_numpy(), pred
-
-
-def regression_holdout(df, reg):
-    """Re-create the notebook's regression test split (test_size=0.25, random_state=0)."""
-    X = df.drop("FWI", axis=1)
-    y = df["FWI"]
-    Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.25, random_state=0)
-    sc = StandardScaler().fit(Xtr[FEATURES])
-    pred = reg.predict(sc.transform(Xte[FEATURES]))
-    return yte.to_numpy(), pred
+    _, X_test, _, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+    predictions = model.predict(X_test)
+    probabilities = model.predict_proba(X_test)[:, list(model.classes_).index(1)]
+    return y_test.to_numpy(), predictions, probabilities
