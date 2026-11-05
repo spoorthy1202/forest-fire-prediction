@@ -347,12 +347,11 @@ python -m pip install pytest
 
 Developed as an academic project at **Manipal Institute of Technology, Manipal Academy of Higher Education**.
 
-- **Vatsal Jindal**
-- **Akash V Paul**
 - **Aditi Dayal**
 - **Spoorthy S Deshpande**
+- **Vatsal Jindal**
 
-**Project Guide:** Dr. Shankar Biradar
+**Project Guide:** Dr. Manjunatha
 
 ---
 
