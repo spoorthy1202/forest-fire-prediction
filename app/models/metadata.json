@@ -1,0 +1,21 @@
+{
+    "features": [
+        "day",
+        "month",
+        "year",
+        "Temperature",
+        "RH",
+        "Ws",
+        "Rain",
+        "FFMC",
+        "DMC",
+        "DC",
+        "ISI",
+        "BUI",
+        "Region"
+    ],
+    "target_map": {
+        "0": "Not Fire",
+        "1": "Fire"
+    }
+}
