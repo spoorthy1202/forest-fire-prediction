@@ -1,0 +1,11 @@
+# Pinned to the versions the pickled models were trained with (scikit-learn 1.0.2 / XGBoost 1.x).
+# Requires Python 3.9 or 3.10.
+streamlit==1.65.0
+scikit-learn==1.0.2
+xgboost==1.6.2
+numpy==1.23.5
+pandas==1.5.3
+scipy<1.11
+plotly>=5.18
+setuptools<70
+pytest
