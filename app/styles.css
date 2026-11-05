@@ -1,0 +1,177 @@
+
+/* =========================================
+   FOREST INTELLIGENCE - DESIGN SYSTEM
+========================================= */
+
+:root {
+    --forest: #183D32;
+    --forest-light: #285744;
+    --sage: #77977A;
+    --orange: #E47B42;
+    --cream: #F4F3EC;
+    --white: #FFFFFF;
+    --text: #202923;
+    --muted: #788078;
+}
+
+/* Main application */
+.stApp {
+    background: var(--cream);
+    color: var(--text);
+}
+
+/* Main content */
+.block-container {
+    max-width: 1450px;
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background: var(--forest);
+}
+
+[data-testid="stSidebar"] * {
+    color: #F5F5ED;
+}
+
+[data-testid="stSidebar"] hr {
+    border-color: rgba(255,255,255,0.15);
+}
+
+/* Sidebar radio navigation */
+[data-testid="stSidebar"] [role="radiogroup"] label {
+    padding: 9px 12px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+    background: rgba(255,255,255,0.10);
+}
+
+/* Headings */
+h1, h2, h3 {
+    color: var(--forest) !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px;
+}
+
+/* Metric cards */
+[data-testid="stMetric"] {
+    background: var(--white);
+    padding: 20px;
+    border: 1px solid #E6E7DF;
+    border-radius: 14px;
+    box-shadow: 0 3px 12px rgba(24,61,50,0.04);
+}
+
+/* Metric labels */
+[data-testid="stMetricLabel"] {
+    color: var(--muted);
+}
+
+/* Buttons */
+.stButton > button,
+.stFormSubmitButton > button {
+    background: var(--orange);
+    color: white;
+    border: none;
+    border-radius: 9px;
+    padding: 0.65rem 1.3rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {
+    background: #C96535;
+    color: white;
+    border: none;
+}
+
+/* Input fields */
+.stNumberInput input,
+.stSelectbox div[data-baseweb="select"] {
+    border-radius: 8px;
+}
+
+/* Containers */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border-radius: 14px;
+}
+
+/* Dataframes */
+[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Images */
+[data-testid="stImage"] img {
+    border-radius: 14px;
+}
+
+/* Hide Streamlit's default footer */
+footer {
+    visibility: hidden;
+}
+
+/* Subtle separators */
+hr {
+    border-color: #DFE3D9;
+}
+
+/* Mobile layout */
+@media (max-width: 768px) {
+    .block-container {
+        padding: 1rem;
+    }
+
+    h1 {
+        font-size: 1.8rem !important;
+    }
+}
+
+/* Fix metric number visibility */
+[data-testid="stMetricValue"] {
+    color: #183D32 !important;
+    font-weight: 700 !important;
+}
+
+[data-testid="stMetricLabel"] {
+    color: #788078 !important;
+}
+
+/* Make metric delta text readable */
+[data-testid="stMetricDelta"] {
+    color: #66866B !important;
+}
+
+/* Improve main text contrast */
+.stApp,
+.stApp p,
+.stApp li {
+    color: #303B34;
+}
+
+/* Improve links and inline code */
+.stApp a {
+    color: #285744;
+}
+
+/* Better section spacing */
+h2 {
+    margin-top: 1.5rem !important;
+}
+
+/* Make buttons more prominent */
+.stButton > button,
+.stFormSubmitButton > button {
+    background-color: #E47B42 !important;
+    color: white !important;
+    border-radius: 9px !important;
+    font-weight: 600 !important;
+}
+

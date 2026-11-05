@@ -1,5 +1,6 @@
 """Streamlit UI for the Random Forest Algerian Forest Fire classifier."""
 import warnings
+import base64
 
 import pandas as pd
 import plotly.express as px
@@ -22,6 +23,99 @@ st.set_page_config(
     page_icon="🔥",
     layout="wide",
     initial_sidebar_state="expanded",
+)
+
+from pathlib import Path
+
+APP_DIR = Path(__file__).parent
+ASSET_DIR = APP_DIR / "assets"
+CSS_PATH = APP_DIR / "styles.css"
+
+# Load the external stylesheet.
+if CSS_PATH.exists():
+    css_text = CSS_PATH.read_text(encoding="utf-8")
+    st.markdown(f"<style>{css_text}</style>", unsafe_allow_html=True)
+else:
+    st.warning("styles.css was not found. The application is using Streamlit's default styling.")
+
+# Use assets/forest_hero.jpg as the page background.
+# Embedding the image as a data URI avoids browser path/URL issues on Windows.
+HERO_BACKGROUND = ASSET_DIR / "forest_hero.jpg"
+background_css = ""
+if HERO_BACKGROUND.exists():
+    image_bytes = HERO_BACKGROUND.read_bytes()
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+    image_mime = "image/jpeg"
+    background_css = f"""
+        [data-testid="stAppViewContainer"] {{
+            background:
+                linear-gradient(
+                    rgba(244, 243, 236, 0.84),
+                    rgba(244, 243, 236, 0.84)
+                ),
+                url("data:{image_mime};base64,{image_base64}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+        }}
+        [data-testid="stMain"] {{
+            background: transparent !important;
+        }}
+        [data-testid="stMainBlockContainer"],
+        [data-testid="stAppViewBlockContainer"],
+        .main .block-container {{
+            background: transparent !important;
+        }}
+        .stApp {{
+            background: transparent !important;
+        }}
+    """
+else:
+    st.warning("assets/forest_hero.jpg was not found. The page will use the default background.")
+
+# Targeted overrides: keep sidebar text and Plotly labels readable.
+st.markdown(
+    f"""
+    <style>
+    {background_css}
+    section[data-testid="stSidebar"],
+    section[data-testid="stSidebar"] * {{
+        color: #F5F5ED !important;
+    }}
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{
+        color: #C5D4CA !important;
+    }}
+    section[data-testid="stSidebar"] [role="radiogroup"] label,
+    section[data-testid="stSidebar"] [role="radiogroup"] label p,
+    section[data-testid="stSidebar"] [role="radiogroup"] label span {{
+        color: #F5F5ED !important;
+    }}
+    section[data-testid="stSidebar"] [role="radiogroup"] label:hover {{
+        background: rgba(255,255,255,0.10) !important;
+    }}
+
+    [data-testid="stMetricValue"] {{
+        color: #183D32 !important;
+        font-weight: 700 !important;
+    }}
+    [data-testid="stMetricLabel"] {{
+        color: #657168 !important;
+    }}
+    .stApp h1, .stApp h2, .stApp h3, .stApp h4 {{
+        color: #183D32;
+    }}
+    [data-testid="stImage"] img {{
+        border-radius: 14px;
+        object-fit: cover;
+    }}
+    header[data-testid="stHeader"] {{
+        background: rgba(244,243,236,0.92);
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 
@@ -67,7 +161,7 @@ df_view["Region name"] = df_view["Region"].map(core.REGION_LABELS).fillna(
     df_view["Region"].astype(str)
 )
 
-st.sidebar.title("🔥 Forest Fire AI")
+st.sidebar.title("Minor Specialization Project")
 st.sidebar.caption("Algerian Forest Fires · Random Forest")
 page = st.sidebar.radio(
     "Navigate",
@@ -75,49 +169,308 @@ page = st.sidebar.radio(
      "📈 Model Performance", "🔥 Fire Prediction"],
 )
 st.sidebar.divider()
-st.sidebar.caption("Minor Specialization Project · MIT Manipal")
+st.sidebar.markdown(
+    """
+    <div style="
+        margin-top: 28px;
+        padding-top: 18px;
+        border-top: 1px solid rgba(255,255,255,0.18);
+        color: #D7E2DA;
+        line-height: 1.9;">
+        <div style="
+            color: #FFFFFF;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 8px;">
+            PROJECT TEAM
+        </div>
+        <div>Vatsal Jindal</div>
+        <div>Aditi Dayal</div>
+        <div>Spoorthy Deshpande</div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # ------------------------------------------------------------------- OVERVIEW
+
+# ------------------------------------------------------------
+# PROJECT OVERVIEW - REDESIGNED HOMEPAGE
+# ------------------------------------------------------------
+
 if page.startswith("🏠"):
-    st.title("🔥 Algerian Forest Fire Prediction")
-    st.write(
-        "A machine-learning dashboard that estimates whether a forest fire is "
-        "likely using weather conditions and Fire Weather Index (FWI) indicators."
-    )
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Observations", len(df))
-    c2.metric("Fire days", int(df["Classes"].sum()))
-    c3.metric("Regions", df["Region"].nunique())
-    c4.metric("Model inputs", len(metadata["features"]))
 
-    st.subheader("Project overview")
-    st.write(
-        "The application uses the tuned Random Forest classifier trained by "
-        "`src/train_model.py`. The saved scikit-learn Pipeline contains both "
-        "the StandardScaler and classifier."
-    )
-    st.subheader("Prediction pipeline")
     st.markdown(
-        "1. Collect the 13 weather, date and region inputs.\n"
-        "2. Arrange the values in the exact feature order from `metadata.json`.\n"
-        "3. Pass the input row to the saved preprocessing-and-classification pipeline.\n"
-        "4. Display the predicted class and estimated fire probability."
+        """
+        <div style="margin-bottom:8px;">
+            <span style="
+                background:#E5ECE4;
+                color:#285744;
+                padding:7px 13px;
+                border-radius:20px;
+                font-size:12px;
+                font-weight:600;
+                letter-spacing:1px;">
+                ENVIRONMENTAL INTELLIGENCE PLATFORM
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
-    st.subheader("Model inputs and training ranges")
-    ranges_table = pd.DataFrame(
-        [
-            {
-                "Feature": core.FEATURE_LABELS[f],
-                "Training minimum": round(ranges[f][0], 2),
-                "Training maximum": round(ranges[f][1], 2),
-            }
-            for f in core.DEFAULT_FEATURES
-        ]
-    )
-    st.dataframe(ranges_table, hide_index=True, use_container_width=True)
 
-    with st.expander("Dataset preview"):
-        st.dataframe(df_view.head(20), use_container_width=True)
+    # HERO SECTION
+    hero_left, hero_right = st.columns([1.15, 0.85], gap="large")
+
+    with hero_left:
+        st.markdown(
+            """
+            <div style="padding-top:25px;">
+                <h1 style="
+                    font-size:43px;
+                    line-height:1.15;
+                    color:#183D32;
+                    margin-bottom:15px;">
+                    Forest Fire<br>
+                    Prediction
+                </h1>
+                <p style="
+                    font-size:17px;
+                    line-height:1.7;
+                    color:#657168;">
+                    Understanding fire patterns through weather
+                    intelligence and machine learning.
+                    Predict potential forest fire occurrence
+                    using environmental conditions and
+                    Fire Weather Index indicators.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
+            """
+            <div style="margin-top:20px;">
+                <span style="
+                    background:#183D32;
+                    color:white;
+                    padding:10px 17px;
+                    border-radius:8px;
+                    font-size:13px;">
+                    RANDOM FOREST MODEL
+                </span>
+                <span style="
+                    background:#E9E8DE;
+                    color:#285744;
+                    padding:10px 17px;
+                    border-radius:8px;
+                    font-size:13px;
+                    margin-left:7px;">
+                    13 INPUT FEATURES
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with hero_right:
+        # Keep this column open so the full-page forest background remains visible.
+        st.markdown(
+            '<div style="min-height:300px; background:transparent;"></div>',
+            unsafe_allow_html=True
+        )
+
+    st.divider()
+
+    # KEY STATISTICS
+    st.markdown("### Platform at a glance")
+
+    total_observations = len(df)
+    fire_days = int(df["Classes"].sum())
+    no_fire_days = total_observations - fire_days
+    regions = df["Region"].nunique()
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    col1.metric(
+        "Total observations",
+        f"{total_observations:,}",
+        help="Total observations in the cleaned dataset"
+    )
+
+    col2.metric(
+        "Fire observations",
+        f"{fire_days:,}",
+        help="Observations classified as fire"
+    )
+
+    col3.metric(
+        "Non-fire observations",
+        f"{no_fire_days:,}"
+    )
+
+    col4.metric(
+        "Regions covered",
+        regions
+    )
+
+    st.markdown("")
+    st.divider()
+
+    # DATA INSIGHTS
+    st.markdown("### Understanding the dataset")
+
+    chart_left, chart_right = st.columns(2, gap="large")
+
+    with chart_left:
+
+        st.markdown("#### Fire occurrence distribution")
+
+        class_counts = (
+            df_view["Fire label"]
+            .value_counts()
+            .rename_axis("Class")
+            .reset_index(name="Observations")
+        )
+
+        fig = px.pie(
+            class_counts,
+            names="Class",
+            values="Observations",
+            hole=0.62,
+            color="Class",
+            color_discrete_map={
+                "Fire": "#E47B42",
+                "Not Fire": "#66866B"
+            }
+        )
+
+        fig.update_layout(
+            height=350,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(t=25, b=20, l=10, r=10),
+            legend=dict(
+                orientation="h",
+                y=-0.10,
+                font=dict(color="#303B34", size=12)
+            ),
+            font=dict(
+                family="Arial, sans-serif",
+                size=13,
+                color="#303B34"
+            )
+        )
+
+        fig.update_traces(
+            textposition="inside",
+            textinfo="percent+label",
+            hole=0.65,
+            textfont=dict(color="#FFFFFF", size=12),
+            marker=dict(line=dict(color="#F4F3EC", width=2))
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={"displayModeBar": False}
+        )
+
+    with chart_right:
+
+        st.markdown("#### Regional fire distribution")
+
+        region_data = (
+            df_view.groupby(["Region name", "Fire label"])
+            .size()
+            .reset_index(name="Observations")
+        )
+
+        fig2 = px.bar(
+            region_data,
+            x="Region name",
+            y="Observations",
+            color="Fire label",
+            barmode="group",
+            color_discrete_map={
+                "Fire": "#E47B42",
+                "Not Fire": "#66866B"
+            }
+        )
+
+        fig2.update_layout(
+            height=350,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(t=25, b=35, l=10, r=10),
+            xaxis_title="",
+            yaxis_title="Observations",
+            legend_title="Classification",
+            font=dict(
+                family="Arial, sans-serif",
+                size=13,
+                color="#303B34"
+            ),
+            xaxis=dict(
+                tickfont=dict(color="#303B34", size=12),
+                showgrid=False,
+                zeroline=False
+            ),
+            yaxis=dict(
+                title_font=dict(color="#657168"),
+                tickfont=dict(color="#657168", size=11),
+                gridcolor="#E2E5DC",
+                zeroline=False
+            ),
+            legend=dict(
+                font=dict(color="#303B34", size=12),
+                bgcolor="rgba(255,255,255,0)"
+            ),
+            bargap=0.25
+        )
+
+        st.plotly_chart(
+            fig2,
+            use_container_width=True,
+            config={"displayModeBar": False}
+        )
+
+    st.divider()
+
+    # HOW THE SYSTEM WORKS - TEXT ONLY
+    st.markdown("### How the prediction system works")
+
+    step1, step2, step3 = st.columns(3, gap="medium")
+
+    with step1:
+        st.markdown("#### 01 · Environmental data")
+        st.write(
+            "Collect temperature, humidity, wind speed, rainfall "
+            "and Fire Weather Index indicators."
+        )
+
+    with step2:
+        st.markdown("#### 02 · Machine learning")
+        st.write(
+            "Process the 13 input features through the trained "
+            "Random Forest classification pipeline."
+        )
+
+    with step3:
+        st.markdown("#### 03 · Fire prediction")
+        st.write(
+            "Generate a fire or no-fire prediction along with "
+            "the estimated fire probability."
+        )
+
+    st.divider()
+
+    st.caption(
+        "Forest Fire Intelligence | Algerian Forest Fires Dataset | "
+        "Random Forest Classification"
+    )
+
 
 # ------------------------------------------------------------------------- EDA
 elif page.startswith("📊"):
