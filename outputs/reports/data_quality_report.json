@@ -1,0 +1,597 @@
+{
+  "dataset_overview": {
+    "input_file": "dataset/The extended Algerian forest fires dataset.xlsx",
+    "sheet_name": "DONAT_data_set",
+    "raw_shape": [
+      1215,
+      13
+    ],
+    "cleaned_shape": [
+      1215,
+      13
+    ],
+    "row_count_preserved": true,
+    "columns": [
+      "DATE",
+      "Temperature",
+      "Ws",
+      "Rain",
+      "RH",
+      "FFMC",
+      "DMC",
+      "DC",
+      "ISI",
+      "BUI",
+      "FWI",
+      "Classes",
+      "Region"
+    ],
+    "fwi_usage_note": "FWI is retained in the cleaned dataset for completeness but MUST NOT be used as a prediction feature during model training to avoid target leakage."
+  },
+  "column_normalization": {
+    "original_columns": [
+      "DATE",
+      "Temperature",
+      "        Ws",
+      "    Rain",
+      "RH",
+      "FFMC",
+      "DMC",
+      "DC",
+      "ISI",
+      "BUI",
+      "FWI",
+      "Classes",
+      "Bejaia 2021"
+    ],
+    "normalized_columns": [
+      "DATE",
+      "Temperature",
+      "Ws",
+      "Rain",
+      "RH",
+      "FFMC",
+      "DMC",
+      "DC",
+      "ISI",
+      "BUI",
+      "FWI",
+      "Classes",
+      "Region"
+    ],
+    "whitespace_stripped_columns": [
+      "        Ws",
+      "    Rain"
+    ],
+    "renamed_columns": {
+      "Bejaia 2021": "Region"
+    }
+  },
+  "categorical_normalization": {
+    "categorical_whitespace_stripped_counts": {
+      "Classes": 20,
+      "Region": 122
+    }
+  },
+  "region_standardization": {
+    "raw_region_values": [
+      "Bejaia 2021",
+      "Blida 2021",
+      "Bouira 2021",
+      "Khenchela 2021",
+      "Tipaza2017",
+      "Setif 2021",
+      "Tiaret 2021",
+      "Bejaia_2012",
+      "Sidi-Bel-Abass2012",
+      "Tizi-Ouzou2021"
+    ],
+    "mapping": {
+      "Bejaia 2021": "Bejaia 2021",
+      "Blida 2021": "Blida 2021",
+      "Bouira 2021": "Bouira 2021",
+      "Khenchela 2021": "Khenchela 2021",
+      "Tipaza2017": "Tipaza 2017",
+      "Setif 2021": "Setif 2021",
+      "Tiaret 2021": "Tiaret 2021",
+      "Bejaia_2012": "Bejaia 2012",
+      "Sidi-Bel-Abass2012": "Sidi Bel Abass 2012",
+      "Tizi-Ouzou2021": "Tizi Ouzou 2021"
+    },
+    "num_region_year_groups": 10,
+    "region_counts": {
+      "Bejaia 2021": 122,
+      "Blida 2021": 122,
+      "Bouira 2021": 122,
+      "Tipaza 2017": 122,
+      "Setif 2021": 122,
+      "Tiaret 2021": 122,
+      "Bejaia 2012": 122,
+      "Sidi Bel Abass 2012": 122,
+      "Tizi Ouzou 2021": 122,
+      "Khenchela 2021": 117
+    }
+  },
+  "target_encoding": {
+    "raw_counts": {
+      "fire": 633,
+      "not fire": 582
+    },
+    "normalized_counts": {
+      "fire": 633,
+      "not fire": 582
+    },
+    "encoded_counts": {
+      "1": 633,
+      "0": 582
+    },
+    "target_mapping": {
+      "fire": 1,
+      "not fire": 0
+    }
+  },
+  "date_validation": {
+    "total_dates_evaluated": 1215,
+    "unparseable_dates_count": 0,
+    "unparseable_dates": [],
+    "excel_serials_converted_count": 1,
+    "excel_serials_converted": [
+      {
+        "row_index": 818,
+        "raw_value": 44439,
+        "region": "Tiaret 2021"
+      }
+    ],
+    "year_mismatches_detected_count": 5,
+    "year_mismatches": [
+      {
+        "row_index": 721,
+        "raw_date": "2025-09-25",
+        "region": "Setif 2021",
+        "expected_year": 2021,
+        "actual_year": 2025,
+        "resolved_date": "2021-09-25",
+        "action": "Corrected year from 2025 to 2021"
+      },
+      {
+        "row_index": 723,
+        "raw_date": "2025-09-27",
+        "region": "Setif 2021",
+        "expected_year": 2021,
+        "actual_year": 2025,
+        "resolved_date": "2021-09-27",
+        "action": "Corrected year from 2025 to 2021"
+      },
+      {
+        "row_index": 724,
+        "raw_date": "2025-09-28",
+        "region": "Setif 2021",
+        "expected_year": 2021,
+        "actual_year": 2025,
+        "resolved_date": "2021-09-28",
+        "action": "Corrected year from 2025 to 2021"
+      },
+      {
+        "row_index": 725,
+        "raw_date": "2025-09-29",
+        "region": "Setif 2021",
+        "expected_year": 2021,
+        "actual_year": 2025,
+        "resolved_date": "2021-09-29",
+        "action": "Corrected year from 2025 to 2021"
+      },
+      {
+        "row_index": 726,
+        "raw_date": "2025-09-30",
+        "region": "Setif 2021",
+        "expected_year": 2021,
+        "actual_year": 2025,
+        "resolved_date": "2021-09-30",
+        "action": "Corrected year from 2025 to 2021"
+      }
+    ],
+    "year_mismatches_harmonized": true,
+    "date_ranges_by_region": {
+      "Bejaia 2012": {
+        "min": "2012-06-01",
+        "max": "2012-09-30",
+        "count": 122
+      },
+      "Bejaia 2021": {
+        "min": "2021-06-01",
+        "max": "2021-09-30",
+        "count": 122
+      },
+      "Blida 2021": {
+        "min": "2021-06-01",
+        "max": "2021-09-30",
+        "count": 122
+      },
+      "Bouira 2021": {
+        "min": "2021-06-01",
+        "max": "2021-09-30",
+        "count": 122
+      },
+      "Khenchela 2021": {
+        "min": "2021-06-01",
+        "max": "2021-09-30",
+        "count": 117
+      },
+      "Setif 2021": {
+        "min": "2021-06-01",
+        "max": "2021-09-30",
+        "count": 122
+      },
+      "Sidi Bel Abass 2012": {
+        "min": "2012-06-01",
+        "max": "2012-09-30",
+        "count": 122
+      },
+      "Tiaret 2021": {
+        "min": "2021-06-01",
+        "max": "2021-09-30",
+        "count": 122
+      },
+      "Tipaza 2017": {
+        "min": "2017-06-01",
+        "max": "2017-09-30",
+        "count": 122
+      },
+      "Tizi Ouzou 2021": {
+        "min": "2021-06-01",
+        "max": "2021-09-30",
+        "count": 122
+      }
+    }
+  },
+  "duplicates": {
+    "exact_row_duplicates": 0,
+    "region_date_duplicates": 0
+  },
+  "missing_values": {
+    "total_missing_values": 0,
+    "missing_per_column": {
+      "DATE": 0,
+      "Temperature": 0,
+      "Ws": 0,
+      "Rain": 0,
+      "RH": 0,
+      "FFMC": 0,
+      "DMC": 0,
+      "DC": 0,
+      "ISI": 0,
+      "BUI": 0,
+      "FWI": 0,
+      "Classes": 0,
+      "Region": 0
+    }
+  },
+  "numerical_outliers_iqr": {
+    "Temperature": {
+      "min": 21.0,
+      "max": 43.0,
+      "q25": 31.0,
+      "median": 33.0,
+      "q75": 36.0,
+      "iqr": 5.0,
+      "lower_bound": 23.5,
+      "upper_bound": 43.5,
+      "outlier_count": 10,
+      "outlier_percentage": 0.82,
+      "action": "reported_only_preserved_in_dataset"
+    },
+    "Ws": {
+      "min": 5.0,
+      "max": 50.0,
+      "q25": 13.0,
+      "median": 15.0,
+      "q75": 18.0,
+      "iqr": 5.0,
+      "lower_bound": 5.5,
+      "upper_bound": 25.5,
+      "outlier_count": 108,
+      "outlier_percentage": 8.89,
+      "action": "reported_only_preserved_in_dataset"
+    },
+    "Rain": {
+      "min": 0.0,
+      "max": 20.2,
+      "q25": 0.0,
+      "median": 0.0,
+      "q75": 0.1,
+      "iqr": 0.1,
+      "lower_bound": -0.15,
+      "upper_bound": 0.25,
+      "outlier_count": 248,
+      "outlier_percentage": 20.41,
+      "action": "reported_only_preserved_in_dataset"
+    },
+    "RH": {
+      "min": 11.0,
+      "max": 96.0,
+      "q25": 37.0,
+      "median": 53.0,
+      "q75": 69.0,
+      "iqr": 32.0,
+      "lower_bound": -11.0,
+      "upper_bound": 117.0,
+      "outlier_count": 0,
+      "outlier_percentage": 0.0,
+      "action": "reported_only_preserved_in_dataset"
+    },
+    "FFMC": {
+      "min": 22.5,
+      "max": 98.6,
+      "q25": 79.8,
+      "median": 87.5,
+      "q75": 91.9,
+      "iqr": 12.1,
+      "lower_bound": 61.65,
+      "upper_bound": 110.05,
+      "outlier_count": 104,
+      "outlier_percentage": 8.56,
+      "action": "reported_only_preserved_in_dataset"
+    },
+    "DMC": {
+      "min": 0.2,
+      "max": 113.9,
+      "q25": 10.0,
+      "median": 18.6,
+      "q75": 36.6,
+      "iqr": 26.6,
+      "lower_bound": -29.9,
+      "upper_bound": 76.5,
+      "outlier_count": 52,
+      "outlier_percentage": 4.28,
+      "action": "reported_only_preserved_in_dataset"
+    },
+    "DC": {
+      "min": 0.0,
+      "max": 308.2,
+      "q25": 25.4,
+      "median": 59.0,
+      "q75": 111.8,
+      "iqr": 86.4,
+      "lower_bound": -104.2,
+      "upper_bound": 241.4,
+      "outlier_count": 27,
+      "outlier_percentage": 2.22,
+      "action": "reported_only_preserved_in_dataset"
+    },
+    "ISI": {
+      "min": 0.0,
+      "max": 116.7,
+      "q25": 2.5,
+      "median": 6.7,
+      "q75": 12.6,
+      "iqr": 10.1,
+      "lower_bound": -12.65,
+      "upper_bound": 27.75,
+      "outlier_count": 84,
+      "outlier_percentage": 6.91,
+      "action": "reported_only_preserved_in_dataset"
+    },
+    "BUI": {
+      "min": 0.3,
+      "max": 113.8,
+      "q25": 10.85,
+      "median": 21.0,
+      "q75": 40.6,
+      "iqr": 29.75,
+      "lower_bound": -33.77,
+      "upper_bound": 85.22,
+      "outlier_count": 41,
+      "outlier_percentage": 3.37,
+      "action": "reported_only_preserved_in_dataset"
+    },
+    "FWI": {
+      "min": 0.0,
+      "max": 102.5,
+      "q25": 3.2,
+      "median": 11.1,
+      "q75": 21.75,
+      "iqr": 18.55,
+      "lower_bound": -24.63,
+      "upper_bound": 49.58,
+      "outlier_count": 58,
+      "outlier_percentage": 4.77,
+      "action": "reported_only_preserved_in_dataset"
+    }
+  },
+  "descriptive_statistics": {
+    "Temperature": {
+      "count": 1215,
+      "mean": 33.3317,
+      "std": 4.0442,
+      "min": 21.0,
+      "25%": 31.0,
+      "50%": 33.0,
+      "75%": 36.0,
+      "max": 43.0,
+      "skewness": -0.1538,
+      "kurtosis": -0.2938
+    },
+    "Ws": {
+      "count": 1215,
+      "mean": 16.5984,
+      "std": 5.7441,
+      "min": 5.0,
+      "25%": 13.0,
+      "50%": 15.0,
+      "75%": 18.0,
+      "max": 50.0,
+      "skewness": 1.7965,
+      "kurtosis": 4.8044
+    },
+    "Rain": {
+      "count": 1215,
+      "mean": 0.4019,
+      "std": 1.421,
+      "min": 0.0,
+      "25%": 0.0,
+      "50%": 0.0,
+      "75%": 0.1,
+      "max": 20.2,
+      "skewness": 7.0389,
+      "kurtosis": 65.9202
+    },
+    "RH": {
+      "count": 1215,
+      "mean": 52.9251,
+      "std": 19.8831,
+      "min": 11.0,
+      "25%": 37.0,
+      "50%": 53.0,
+      "75%": 69.0,
+      "max": 96.0,
+      "skewness": 0.0424,
+      "kurtosis": -0.9908
+    },
+    "FFMC": {
+      "count": 1215,
+      "mean": 83.2764,
+      "std": 13.2883,
+      "min": 22.5,
+      "25%": 79.8,
+      "50%": 87.5,
+      "75%": 91.9,
+      "max": 98.6,
+      "skewness": -1.8183,
+      "kurtosis": 3.2839
+    },
+    "DMC": {
+      "count": 1215,
+      "mean": 26.2751,
+      "std": 22.5051,
+      "min": 0.2,
+      "25%": 10.0,
+      "50%": 18.6,
+      "75%": 36.6,
+      "max": 113.9,
+      "skewness": 1.3436,
+      "kurtosis": 1.371
+    },
+    "DC": {
+      "count": 1215,
+      "mean": 78.1322,
+      "std": 65.9179,
+      "min": 0.0,
+      "25%": 25.4,
+      "50%": 59.0,
+      "75%": 111.8,
+      "max": 308.2,
+      "skewness": 1.0455,
+      "kurtosis": 0.3271
+    },
+    "ISI": {
+      "count": 1215,
+      "mean": 9.9045,
+      "std": 11.2441,
+      "min": 0.0,
+      "25%": 2.5,
+      "50%": 6.7,
+      "75%": 12.6,
+      "max": 116.7,
+      "skewness": 3.0241,
+      "kurtosis": 15.6883
+    },
+    "BUI": {
+      "count": 1215,
+      "mean": 28.776,
+      "std": 23.7451,
+      "min": 0.3,
+      "25%": 10.85,
+      "50%": 21.0,
+      "75%": 40.6,
+      "max": 113.8,
+      "skewness": 1.1838,
+      "kurtosis": 0.7897
+    },
+    "FWI": {
+      "count": 1215,
+      "mean": 15.4974,
+      "std": 15.9678,
+      "min": 0.0,
+      "25%": 3.2,
+      "50%": 11.1,
+      "75%": 21.75,
+      "max": 102.5,
+      "skewness": 1.6459,
+      "kurtosis": 3.2674
+    }
+  },
+  "class_distribution": {
+    "overall": {
+      "0_not_fire": {
+        "count": 582,
+        "percentage": 47.9
+      },
+      "1_fire": {
+        "count": 633,
+        "percentage": 52.1
+      }
+    },
+    "by_region": {
+      "Bejaia 2012": {
+        "not_fire_0": 63,
+        "fire_1": 59,
+        "total": 122,
+        "fire_rate_percentage": 48.36
+      },
+      "Bejaia 2021": {
+        "not_fire_0": 75,
+        "fire_1": 47,
+        "total": 122,
+        "fire_rate_percentage": 38.52
+      },
+      "Blida 2021": {
+        "not_fire_0": 58,
+        "fire_1": 64,
+        "total": 122,
+        "fire_rate_percentage": 52.46
+      },
+      "Bouira 2021": {
+        "not_fire_0": 64,
+        "fire_1": 58,
+        "total": 122,
+        "fire_rate_percentage": 47.54
+      },
+      "Khenchela 2021": {
+        "not_fire_0": 42,
+        "fire_1": 75,
+        "total": 117,
+        "fire_rate_percentage": 64.1
+      },
+      "Setif 2021": {
+        "not_fire_0": 49,
+        "fire_1": 73,
+        "total": 122,
+        "fire_rate_percentage": 59.84
+      },
+      "Sidi Bel Abass 2012": {
+        "not_fire_0": 43,
+        "fire_1": 79,
+        "total": 122,
+        "fire_rate_percentage": 64.75
+      },
+      "Tiaret 2021": {
+        "not_fire_0": 35,
+        "fire_1": 87,
+        "total": 122,
+        "fire_rate_percentage": 71.31
+      },
+      "Tipaza 2017": {
+        "not_fire_0": 92,
+        "fire_1": 30,
+        "total": 122,
+        "fire_rate_percentage": 24.59
+      },
+      "Tizi Ouzou 2021": {
+        "not_fire_0": 61,
+        "fire_1": 61,
+        "total": 122,
+        "fire_rate_percentage": 50.0
+      }
+    }
+  }
+}

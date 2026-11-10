@@ -1,0 +1,70 @@
+{
+  "features": [
+    "Temperature",
+    "Ws",
+    "Rain",
+    "RH",
+    "FFMC",
+    "DMC",
+    "DC",
+    "ISI",
+    "BUI",
+    "Region",
+    "month"
+  ],
+  "target_map": {
+    "0": "Not Fire",
+    "1": "Fire"
+  },
+  "region_map": {
+    "Bejaia 2012": 0,
+    "Bejaia 2021": 1,
+    "Blida 2021": 2,
+    "Bouira 2021": 3,
+    "Khenchela 2021": 4,
+    "Setif 2021": 5,
+    "Sidi Bel Abass 2012": 6,
+    "Tiaret 2021": 7,
+    "Tipaza 2017": 8,
+    "Tizi Ouzou 2021": 9
+  },
+  "best_model_name": "XGBoost",
+  "cv_strategy": "TimeSeriesSplit(n_splits=5)",
+  "metrics": {
+    "Accuracy": 0.8673,
+    "F1-Score": 0.8655,
+    "Precision": 0.7967,
+    "Recall": 0.9761,
+    "ROC-AUC": 0.9318
+  },
+  "all_model_metrics": {
+    "Logistic Regression": {
+      "Accuracy": 0.80990099009901,
+      "F1-Score": 0.8192249505149969,
+      "Precision": 0.7063515024733242,
+      "Recall": 1.0,
+      "ROC-AUC": 0.9766470235423634
+    },
+    "Decision Tree": {
+      "Accuracy": 0.8445544554455445,
+      "F1-Score": 0.84498599843928,
+      "Precision": 0.7639923097420066,
+      "Recall": 0.9679321470990601,
+      "ROC-AUC": 0.8452019461734469
+    },
+    "Random Forest": {
+      "Accuracy": 0.8495049504950496,
+      "F1-Score": 0.8526955664356812,
+      "Precision": 0.7637256587887096,
+      "Recall": 0.9865401634524911,
+      "ROC-AUC": 0.9655942666612128
+    },
+    "XGBoost": {
+      "Accuracy": 0.8673267326732674,
+      "F1-Score": 0.8655157881156923,
+      "Precision": 0.7966650048047456,
+      "Recall": 0.9760512458377724,
+      "ROC-AUC": 0.9317775524943019
+    }
+  }
+}

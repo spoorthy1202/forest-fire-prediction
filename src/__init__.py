@@ -1,0 +1,3 @@
+"""
+Forest Fire Prediction Package.
+"""
