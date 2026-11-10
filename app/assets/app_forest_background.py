@@ -1,6 +1,9 @@
-"""Streamlit UI for the Random Forest Algerian Forest Fire classifier."""
+"""Streamlit UI for the Extended Algerian Forest Fire XGBoost classifier."""
 import warnings
 import base64
+import sys
+import os
+from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -15,9 +18,14 @@ from sklearn.metrics import (
     roc_curve,
 )
 
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Robust path handling whether run from repo root, app/, or app/assets/
+CURRENT_FILE = Path(__file__).resolve()
+APP_DIR = CURRENT_FILE.parent if CURRENT_FILE.parent.name == "app" else CURRENT_FILE.parent.parent
+ASSET_DIR = APP_DIR / "assets"
+CSS_PATH = APP_DIR / "styles.css"
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
 import core
 
 warnings.filterwarnings("ignore")
@@ -28,12 +36,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-from pathlib import Path
-
-APP_DIR = Path(__file__).parent
-ASSET_DIR = APP_DIR / "assets"
-CSS_PATH = APP_DIR / "styles.css"
-
 # Load the external stylesheet.
 if CSS_PATH.exists():
     css_text = CSS_PATH.read_text(encoding="utf-8")
@@ -42,7 +44,6 @@ else:
     st.warning("styles.css was not found. The application is using Streamlit's default styling.")
 
 # Use assets/forest_hero.jpg as the page background.
-# Embedding the image as a data URI avoids browser path/URL issues on Windows.
 HERO_BACKGROUND = ASSET_DIR / "forest_hero.jpg"
 background_css = ""
 if HERO_BACKGROUND.exists():
@@ -69,48 +70,45 @@ if HERO_BACKGROUND.exists():
             background: transparent !important;
         }}
     """
-else:
-    st.warning("assets/forest_hero.jpg was not found. The page will use the default background.")
 
-# Targeted overrides: keep sidebar text and Plotly labels readable.
 st.markdown(
-    """
+    f"""
     <style>
     {background_css}
     section[data-testid="stSidebar"],
-    section[data-testid="stSidebar"] * {
+    section[data-testid="stSidebar"] * {{
         color: #F5F5ED !important;
-    }
+    }}
     section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
-    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{
         color: #C5D4CA !important;
-    }
+    }}
     section[data-testid="stSidebar"] [role="radiogroup"] label,
     section[data-testid="stSidebar"] [role="radiogroup"] label p,
-    section[data-testid="stSidebar"] [role="radiogroup"] label span {
+    section[data-testid="stSidebar"] [role="radiogroup"] label span {{
         color: #F5F5ED !important;
-    }
-    section[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+    }}
+    section[data-testid="stSidebar"] [role="radiogroup"] label:hover {{
         background: rgba(255,255,255,0.10) !important;
-    }
+    }}
 
-    [data-testid="stMetricValue"] {
+    [data-testid="stMetricValue"] {{
         color: #183D32 !important;
         font-weight: 700 !important;
-    }
-    [data-testid="stMetricLabel"] {
+    }}
+    [data-testid="stMetricLabel"] {{
         color: #657168 !important;
-    }
-    .stApp h1, .stApp h2, .stApp h3, .stApp h4 {
+    }}
+    .stApp h1, .stApp h2, .stApp h3, .stApp h4 {{
         color: #183D32;
-    }
-    [data-testid="stImage"] img {
+    }}
+    [data-testid="stImage"] img {{
         border-radius: 14px;
         object-fit: cover;
-    }
-    header[data-testid="stHeader"] {
+    }}
+    header[data-testid="stHeader"] {{
         background: rgba(244,243,236,0.92);
-    }
+    }}
     </style>
     """,
     unsafe_allow_html=True,
@@ -146,9 +144,8 @@ except Exception as exc:
     st.error("The application could not load its model or dataset.")
     st.exception(exc)
     st.info(
-        "Check that models/fire_classifier.joblib, models/metadata.json and "
-        "data/Algerian_forest_fires_dataset_CLEANED.csv are in the expected "
-        "locations. See the integration instructions."
+        "Check that models/fire_classifier_extended.joblib, models/metadata_extended.json and "
+        "dataset/processed/forest_fires_cleaned.csv are in the expected locations."
     )
     st.stop()
 
@@ -160,7 +157,7 @@ df_view["Region name"] = df_view["Region"].map(core.REGION_LABELS).fillna(
 )
 
 st.sidebar.title("🔥 Forest Fire AI")
-st.sidebar.caption("Algerian Forest Fires · Random Forest")
+st.sidebar.caption("Extended Algerian Forest Fires · XGBoost")
 page = st.sidebar.radio(
     "Navigate",
     ["🏠 Project Overview", "📊 Exploratory Data Analysis",
@@ -170,13 +167,7 @@ st.sidebar.divider()
 st.sidebar.caption("Minor Specialization Project · MIT Manipal")
 
 # ------------------------------------------------------------------- OVERVIEW
-
-# ------------------------------------------------------------
-# PROJECT OVERVIEW - REDESIGNED HOMEPAGE
-# ------------------------------------------------------------
-
 if page.startswith("🏠"):
-
     st.markdown(
         """
         <div style="margin-bottom:8px;">
@@ -234,7 +225,7 @@ if page.startswith("🏠"):
                     padding:10px 17px;
                     border-radius:8px;
                     font-size:13px;">
-                    RANDOM FOREST MODEL
+                    XGBOOST MODEL
                 </span>
                 <span style="
                     background:#E9E8DE;
@@ -243,7 +234,7 @@ if page.startswith("🏠"):
                     border-radius:8px;
                     font-size:13px;
                     margin-left:7px;">
-                    13 INPUT FEATURES
+                    11 INPUT FEATURES
                 </span>
             </div>
             """,
@@ -251,8 +242,6 @@ if page.startswith("🏠"):
         )
 
     with hero_right:
-        # The forest_hero.jpg image is now used as the full-page background,
-        # so a second copy of the same image is intentionally not displayed here.
         st.markdown(
             """
             <div style="
@@ -279,7 +268,7 @@ if page.startswith("🏠"):
 
     st.divider()
 
-    # KEY STATISTICS
+    # KEY STATISTICS - DYNAMICALLY CALCULATED FROM CLEANED DATASET
     st.markdown("### Platform at a glance")
 
     total_observations = len(df)
@@ -303,12 +292,14 @@ if page.startswith("🏠"):
 
     col3.metric(
         "Non-fire observations",
-        f"{no_fire_days:,}"
+        f"{no_fire_days:,}",
+        help="Observations classified as not fire"
     )
 
     col4.metric(
         "Regions covered",
-        regions
+        regions,
+        help="Geographical region-year groups"
     )
 
     st.markdown("")
@@ -320,7 +311,6 @@ if page.startswith("🏠"):
     chart_left, chart_right = st.columns(2, gap="large")
 
     with chart_left:
-
         st.markdown("#### Fire occurrence distribution")
 
         class_counts = (
@@ -374,7 +364,6 @@ if page.startswith("🏠"):
         )
 
     with chart_right:
-
         st.markdown("#### Regional fire distribution")
 
         region_data = (
@@ -459,8 +448,8 @@ if page.startswith("🏠"):
             st.image(str(satellite_image), use_container_width=True)
 
         st.write(
-            "Process the 13 input features through the "
-            "trained Random Forest classification pipeline."
+            "Process the 11 input features through the "
+            "trained XGBoost classification pipeline."
         )
 
     with step3:
@@ -498,10 +487,9 @@ if page.startswith("🏠"):
     st.divider()
 
     st.caption(
-        "Forest Fire Intelligence | Algerian Forest Fires Dataset | "
-        "Random Forest Classification"
+        "Forest Fire Intelligence | Extended Algerian Forest Fires Dataset | "
+        "XGBoost Classification"
     )
-
 
 # ------------------------------------------------------------------------- EDA
 elif page.startswith("📊"):
@@ -559,7 +547,7 @@ elif page.startswith("📊"):
         corr = numeric.corr().round(2)
         st.plotly_chart(
             px.imshow(corr, text_auto=True, color_continuous_scale="RdBu_r",
-                      zmin=-1, zmax=1, aspect="auto", title="Feature correlation"),
+                       zmin=-1, zmax=1, aspect="auto", title="Feature correlation"),
             use_container_width=True,
         )
 
@@ -587,8 +575,8 @@ elif page.startswith("📊"):
 elif page.startswith("📈"):
     st.title("📈 Model Performance")
     st.caption(
-        "Metrics below are recomputed on the same stratified 80/20 holdout split "
-        "used in src/train_model.py (test_size=0.2, random_state=42)."
+        "Metrics below are recomputed on a chronological holdout split "
+        "using the upgraded XGBoost model and 11 input features."
     )
     try:
         y_true, y_pred, y_probability = core.holdout_predictions(df, model)
@@ -635,7 +623,7 @@ elif page.startswith("📈"):
         classifier = model.named_steps.get("clf") if hasattr(model, "named_steps") else None
         if classifier is not None and hasattr(classifier, "feature_importances_"):
             importance = pd.DataFrame({
-                "Feature": core.DEFAULT_FEATURES,
+                "Feature": [core.FEATURE_LABELS.get(f, f) for f in core.DEFAULT_FEATURES],
                 "Importance": classifier.feature_importances_,
             }).sort_values("Importance")
             st.subheader("Feature importance")
@@ -651,42 +639,54 @@ elif page.startswith("📈"):
 else:
     st.title("🔥 Fire Prediction")
     st.write(
-        "Enter the date, region and weather/FWI readings. The application will "
+        "Enter the month, region and weather/FWI readings. The application will "
         "return a fire/no-fire classification and the model's fire probability."
     )
 
     means = df[core.DEFAULT_FEATURES].mean(numeric_only=True)
     with st.form("fire_prediction_form"):
-        st.subheader("Date and location")
-        date_cols = st.columns(4)
-        day = date_cols[0].number_input("Day", min_value=1, max_value=31,
-                                        value=int(round(means["day"])), step=1)
-        month = date_cols[1].number_input("Month", min_value=1, max_value=12,
-                                          value=int(round(means["month"])), step=1)
-        year = date_cols[2].number_input("Year", min_value=1900, max_value=2100,
-                                         value=int(round(means["year"])), step=1)
-        region_name = date_cols[3].selectbox("Region", ["Bejaia", "Sidi Bel-Abbes"])
-        region_value = 1 if region_name == "Bejaia" else 2
+        st.subheader("Time and location")
+        loc_cols = st.columns(2)
+        month = loc_cols[0].number_input(
+            "Month",
+            min_value=6,
+            max_value=9,
+            value=int(round(means["month"])),
+            step=1,
+            help="Summer fire season months: June (6), July (7), August (8), September (9)",
+        )
+
+        region_options = sorted(list(core.REGION_LABELS.keys()))
+        selected_region = loc_cols[1].selectbox(
+            "Region",
+            region_options,
+            format_func=lambda r: core.REGION_LABELS.get(r, str(r)),
+            help="Select one of the 10 geographical region-year groups",
+        )
+        region_value = int(selected_region)
 
         st.subheader("Weather conditions")
         weather_cols = st.columns(4)
-        weather_features = ["Temperature", "RH", "Ws", "Rain"]
+        weather_features = ["Temperature", "Ws", "Rain", "RH"]
         values = {
-            "day": int(day), "month": int(month), "year": int(year),
+            "month": int(month),
             "Region": int(region_value),
         }
         weather_limits = {
             "Temperature": (-10.0, 60.0),
-            "RH": (0.0, 100.0),
             "Ws": (0.0, 150.0),
             "Rain": (0.0, 300.0),
+            "RH": (0.0, 100.0),
         }
         for col, feature in zip(weather_cols, weather_features):
             low, high = weather_limits[feature]
             default = safe_default(feature, ranges, means[feature])
             values[feature] = col.number_input(
-                core.FEATURE_LABELS[feature], min_value=float(low), max_value=float(high),
-                value=float(default), step=0.1 if feature == "Rain" else 1.0,
+                core.FEATURE_LABELS[feature],
+                min_value=float(low),
+                max_value=float(high),
+                value=float(default),
+                step=0.1 if feature == "Rain" else 1.0,
                 help=f"Observed training range: {ranges[feature][0]:.2f}–{ranges[feature][1]:.2f}",
             )
 
@@ -694,20 +694,27 @@ else:
         index_cols = st.columns(5)
         index_features = ["FFMC", "DMC", "DC", "ISI", "BUI"]
         index_limits = {
-            "FFMC": (0.0, 101.0), "DMC": (0.0, 500.0),
-            "DC": (0.0, 1000.0), "ISI": (0.0, 100.0), "BUI": (0.0, 500.0),
+            "FFMC": (0.0, 101.0),
+            "DMC": (0.0, 500.0),
+            "DC": (0.0, 1000.0),
+            "ISI": (0.0, 100.0),
+            "BUI": (0.0, 500.0),
         }
         for col, feature in zip(index_cols, index_features):
             low, high = index_limits[feature]
             default = safe_default(feature, ranges, means[feature])
             values[feature] = col.number_input(
-                core.FEATURE_LABELS[feature], min_value=float(low), max_value=float(high),
-                value=float(default), step=0.1,
+                core.FEATURE_LABELS[feature],
+                min_value=float(low),
+                max_value=float(high),
+                value=float(default),
+                step=0.1,
                 help=f"Observed training range: {ranges[feature][0]:.2f}–{ranges[feature][1]:.2f}",
             )
 
-        submitted = st.form_submit_button("Predict fire risk", type="primary",
-                                          use_container_width=True)
+        submitted = st.form_submit_button(
+            "Predict fire risk", type="primary", use_container_width=True
+        )
 
     if submitted:
         errors = core.validate_inputs(values)
@@ -737,7 +744,7 @@ else:
                     st.metric("Fire probability", f"{probability:.1%}")
                     st.progress(min(max(probability, 0.0), 1.0))
                 st.caption(
-                    "This is a machine-learning estimate based on the Algerian "
+                    "This is a machine-learning estimate based on the extended Algerian "
                     "Forest Fires dataset. It is not an official warning system."
                 )
                 with st.expander("Inputs sent to the model"):
